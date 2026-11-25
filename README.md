@@ -35,8 +35,8 @@ control because it contains a machine-specific game path.
      checks for its latest script at startup.
    - **Audio language stubber** opens Rueben Gill's language-only tool. It
      checks this fork for an updated audio script at startup, then detects
-     installed voice-over folders. Korean and Chinese appear disabled until
-     their folders are installed in-game; rescan after installing one.
+     installed voice-over folders. Extra languages appear disabled until
+     their folders are installed in-game; rescan after installing one.   
    - **Check for script updates again** retries both downloads after startup.
    - **Exit** closes the launcher.
 
