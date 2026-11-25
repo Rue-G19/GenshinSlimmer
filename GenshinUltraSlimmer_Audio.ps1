@@ -27,6 +27,36 @@ function Test-GameRoot {
     return ($Path -and (Test-Path -LiteralPath (Join-Path $Path "GenshinImpact_Data\Persistent\AudioAssets")))
 }
 
+function Remove-FileLock {
+    param([string]$Path)
+
+    try {
+        $file = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+        if ($null -eq $file) { return }
+        if ($file.Attributes -band [System.IO.FileAttributes]::ReadOnly) {
+            $file.Attributes = $file.Attributes -band -bnot [System.IO.FileAttributes]::ReadOnly
+        }
+        if ($file.IsReadOnly) {
+            $file.IsReadOnly = $false
+        }
+
+        $acl = $file.GetAccessControl()
+        $rules = $acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier])
+        $modified = $false
+        foreach ($rule in $rules) {
+            if ($rule.AccessControlType -eq [System.Security.AccessControl.AccessControlType]::Deny) {
+                $acl.RemoveAccessRuleSpecific($rule)
+                $modified = $true
+            }
+        }
+        if ($modified) {
+            $file.SetAccessControl($acl)
+        }
+    } catch {
+        # The write attempt below reports the actionable access error, if this is insufficient.
+    }
+}
+
 function Get-ManifestCandidates {
     param([string]$GameRoot)
 
@@ -126,6 +156,7 @@ function Sync-LanguageManifest {
             }
         }
 
+        Remove-FileLock -Path $manifestPath
         [System.IO.File]::WriteAllLines($manifestPath, $output, [System.Text.UTF8Encoding]::new($false))
         $patchedTotal += $patched
     }
@@ -199,6 +230,7 @@ function Restore-LanguageFiles {
                 $output.Add($line)
             }
         }
+        Remove-FileLock -Path $manifestPath
         [System.IO.File]::WriteAllLines($manifestPath, $output, [System.Text.UTF8Encoding]::new($false))
     }
 
@@ -206,6 +238,7 @@ function Restore-LanguageFiles {
     foreach ($file in $stubbedFiles) {
         $key = ConvertTo-ManifestKey "$Language/$($file.Name)"
         if ($restoreEntries.ContainsKey($key)) {
+            Remove-FileLock -Path $file.FullName
             Remove-Item -LiteralPath $file.FullName -Force
             $removed++
         }
@@ -1050,6 +1083,7 @@ $BtnStubSelected.Add_Click({
         foreach ($language in $selectedLanguages) {
             foreach ($file in $trackedByLanguage[$language]) {
                 try {
+                    Remove-FileLock -Path $file.FullName
                     [System.IO.File]::WriteAllBytes($file.FullName, [byte[]]@())
                     $stubbedCount++
                 } catch {
