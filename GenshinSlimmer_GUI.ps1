@@ -9,13 +9,11 @@
       * 7.x Manifest Synchronization Engine (res_versions_persist + audio/persist variants, fileSize=0, md5 + 7.1 hash)
       * Experimental Launcher pkg_version Sync & Revert ([P])
       * In-Game Revision Manager (R / S / D revisions with 1-click Auto-Fetch R)
-      * Optional Japanese voice-over stubbing with language-specific manifest sync
       * Unlock / Restore & Legacy ACL Stripper ([U])
       * NTFS LZX Compression ([C])
     - Shares path.ini with GenshinSlimmer.ps1.
 
-    Original author: dnullptr
-    Japanese audio contribution: Rueben Gill
+    Author: dnullptr
 #>
 
 # --- SELF-ELEVATION & STA THREAD REQUIREMENT ---
@@ -50,10 +48,6 @@ $script:UGCSearchPaths = @(
     "GenshinImpact_Data\StreamingAssets\AudioAssets\BeyondUGC",
     "GenshinImpact_Data\Persistent\AudioAssets\BeyondUGC"
 )
-# Japanese voice packs live in Persistent, while their manifest names are Japanese/<file>.
-$script:JapaneseAudioSearchPaths = @(
-    "GenshinImpact_Data\Persistent\AudioAssets\Japanese"
-)
 
 $script:PatternsMondstadt   = @("*Mengde*", "*MDAQ*", "*Venti*", "*WDLQ*", "*Ambor*", "*Cs_102*")
 $script:PatternsLiyue       = @("*LiYue*", "*LYAQ*", "*LY_*", "*LQ10*", "*LQ11*", "*XiaoPersonal*", "*ShenheBattle*", "*YunjinOpera*")
@@ -82,7 +76,6 @@ $script:CategoryDefinitions = @(
     @{ Id = "UGC";         Name = "10. UGC Cache (BeyondUGC)";       Sub = "Miliastra Wonderland / BeyondUGC Audio Cache";     Paths = $script:UGCSearchPaths;   Patterns = @("*");                      Exclude = @();                       SafePreset = $true;  Warn = $false }
     @{ Id = "Boy";         Name = "11. 'Boy' Traveler Cutscenes";    Sub = "Stub Aether variants (up to 7.1, keeps 7.2 AQ)";   Paths = $script:VideoSearchPaths; Patterns = $script:PatternsBoy;         Exclude = $script:PatternsSnezhnaya72; SafePreset = $false; Warn = $false }
     @{ Id = "Girl";        Name = "12. 'Girl' Traveler Cutscenes";   Sub = "Stub Lumine variants (up to 7.1, keeps 7.2 AQ)";   Paths = $script:VideoSearchPaths; Patterns = $script:PatternsGirl;        Exclude = $script:PatternsSnezhnaya72; SafePreset = $false; Warn = $false }
-    @{ Id = "JapaneseAudio"; Name = "13. Japanese Voice-over Audio"; Sub = "Removes playable-character dialogue in and out of cutscenes"; Paths = $script:JapaneseAudioSearchPaths; Patterns = @("*"); Exclude = @(); SafePreset = $false; Warn = $true }
 )
 
 # --- BACKEND ENGINE FUNCTIONS ---
@@ -128,15 +121,6 @@ function Get-MatchingFiles {
     return $AllFiles
 }
 
-function Get-ManifestRestoreKey {
-    param ([string]$GameRoot, [System.IO.FileInfo]$File)
-    $japanesePath = Join-Path $GameRoot $script:JapaneseAudioSearchPaths[0]
-    if ($File.DirectoryName -ieq $japanesePath) {
-        return "Japanese/$($File.Name)"
-    }
-    return $File.Name
-}
-
 function Get-ManifestCandidates {
     param ([string]$GameRoot)
     $candidates = @()
@@ -178,17 +162,6 @@ function Get-StubbedFileMap {
                 $cleanName = if ($f.Name -like "*.bak") { $f.Name.Substring(0, $f.Name.Length - 4) } else { $f.Name }
                 $exactMap["BeyondUGC/$cleanName"] = $true
                 $nameMap[$cleanName.ToLower()] = $true
-            }
-        }
-    }
-    # Keep Japanese entries exact-path-only; other language packs reuse the same numbered filenames.
-    foreach ($relPath in $script:JapaneseAudioSearchPaths) {
-        $fullPath = Join-Path $GameRoot $relPath
-        if (Test-Path -LiteralPath $fullPath) {
-            $files = Get-ChildItem -Path $fullPath -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -eq 0 }
-            foreach ($f in $files) {
-                $cleanName = if ($f.Name -like "*.bak") { $f.Name.Substring(0, $f.Name.Length - 4) } else { $f.Name }
-                $exactMap["Japanese/$cleanName"] = $true
             }
         }
     }
@@ -276,15 +249,9 @@ function Restore-ManifestEngine {
     if ($lookupExact.Count -eq 0) { return 0 }
 
     $restoreNames = @{}
-    $restoreExact = @{}
     foreach ($fn in $FileNamesToRestore) {
         $cleanName = if ($fn -like "*.bak") { $fn.Substring(0, $fn.Length - 4) } else { $fn }
-        # A path-qualified Japanese key must not fall back to another locale's same-named entry.
-        if ($cleanName.Contains('/') -or $cleanName.Contains('\')) {
-            $restoreExact[$cleanName.Replace('\', '/')] = $true
-        } else {
-            $restoreNames[$cleanName.ToLower()] = $true
-        }
+        $restoreNames[$cleanName.ToLower()] = $true
     }
 
     $totalRestored = 0
@@ -297,11 +264,10 @@ function Restore-ManifestEngine {
             if ($line -match '"remoteName":\s*"([^"]+)"') {
                 $remoteName = $matches[1]
                 $fileName   = $remoteName.Split('/')[-1].ToLower()
-                $isExactPath = $restoreExact.ContainsKey($remoteName)
-                if ($isExactPath -or $restoreNames.ContainsKey($fileName)) {
+                if ($restoreNames.ContainsKey($fileName)) {
                     if ($lookupExact.ContainsKey($remoteName)) {
                         $output.Add($lookupExact[$remoteName]); $restoredCount++; $matched = $true
-                    } elseif (-not $isExactPath -and $lookupByName.ContainsKey($fileName)) {
+                    } elseif ($lookupByName.ContainsKey($fileName)) {
                         $output.Add($lookupByName[$fileName]); $restoredCount++; $matched = $true
                     }
                 }
@@ -633,7 +599,7 @@ function Get-LiveServerRevisions {
                             <TextBlock Text="v14 (7.2 Ready)" FontSize="11" FontWeight="Bold" Foreground="#FFFFFF"/>
                         </Border>
                     </StackPanel>
-                    <TextBlock Text="Live Server Revision Auto-Fetch  |  Manifest-Sync Engine  |  Split 7.1 / 7.2 Snezhnaya  |  Japanese audio contribution: Rueben Gill" FontSize="11.5" Foreground="#8B949E"/>
+                    <TextBlock Text="Live Server Revision Auto-Fetch  |  Manifest-Sync Engine  |  Split 7.1 / 7.2 Snezhnaya" FontSize="11.5" Foreground="#8B949E"/>
                 </StackPanel>
             </StackPanel>
 
@@ -1145,11 +1111,6 @@ $BtnStubSelected.Add_Click({
     $warn72 = if ($script:CategoryRows["Snezhnaya72"].CheckBox.IsChecked) {
         "`n`nWARNING: You have '8b. Snezhnaya 7.2' checked! Make sure you finished the 7.2 Archon Quest first."
     } else { "" }
-    $japaneseAudioDir = Join-Path $gameRoot $script:JapaneseAudioSearchPaths[0]
-    $hasJapaneseAudio = @($selFiles | Where-Object { $_.DirectoryName -ieq $japaneseAudioDir }).Count -gt 0
-    $warnJapanese = if ($hasJapaneseAudio) {
-        "`n`nWARNING: Stubbing Japanese voice-over removes all playable-character dialogue, both in and out of cutscenes, until the audio is restored or downloaded again."
-    } else { "" }
 
     if ($activeFiles.Count -eq 0) {
         $synced = Sync-ManifestEngine -GameRoot $gameRoot
@@ -1159,7 +1120,7 @@ $BtnStubSelected.Add_Click({
     }
 
     $ans = [System.Windows.MessageBox]::Show(
-        "Stub $($activeFiles.Count) active files ($(Format-Bytes $totalBytes)) to 0KB and synchronize res_versions_persist?$warn72$warnJapanese",
+        "Stub $($activeFiles.Count) active files ($(Format-Bytes $totalBytes)) to 0KB and synchronize res_versions_persist?$warn72",
         "Confirm Stub & Manifest Sync",
         [System.Windows.MessageBoxButton]::YesNo,
         [System.Windows.MessageBoxImage]::Question
@@ -1229,7 +1190,7 @@ $BtnUnlockRestore.Add_Click({
             try {
                 Remove-FileLock -Path $f.FullName
                 Remove-Item -LiteralPath $f.FullName -Force -ErrorAction SilentlyContinue
-                $deletedNames += Get-ManifestRestoreKey -GameRoot $gameRoot -File $f
+                $deletedNames += $f.Name
             } catch {}
         }
         $restoredM = Restore-ManifestEngine -GameRoot $gameRoot -FileNamesToRestore $deletedNames
