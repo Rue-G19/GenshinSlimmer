@@ -1,12 +1,5 @@
 # GenshinUltraSlimmer
 
-```text
-============================================================
-                 G E N S H I N U L T R A S L I M M E R
-                 Genshin Impact PC space tools
-============================================================
-```
-
 GenshinUltraSlimmer is a Windows launcher for dnullptr's original GenshinSlimmer
 and a multilingual audio-language stubber maintained by **Rueben Gill**.
 The original tools remain credited to dnullptr; the launcher updates the GUI
