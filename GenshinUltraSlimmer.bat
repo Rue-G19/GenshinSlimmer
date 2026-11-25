@@ -26,7 +26,7 @@ set "AUDIO_URL=https://raw.githubusercontent.com/Rue-G19/GenshinSlimmer/main/Gen
 cls
 echo.
 echo  ============================================================
-echo                 G E N S H I N U L T R A S L I M M E R
+echo                 G E N S H I N   U L T R A   S L I M M E R
 echo                   Starting up - checking for updates
 echo  ============================================================
 echo.
@@ -51,8 +51,9 @@ timeout /t 2 /nobreak >nul
 cls
 echo.
 echo  ============================================================
-echo                 G E N S H I N U L T R A S L I M M E R
+echo                 G E N S H I N   U L T R A   S L I M M E R
 echo                 Genshin Impact PC space tools
+echo            Original project: github.com/dnullptr/GenshinSlimmer
 echo  ============================================================
 echo.
 echo  1. Original GenshinSlimmer by dnullptr
