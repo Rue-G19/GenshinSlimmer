@@ -53,7 +53,7 @@ echo.
 echo  ============================================================
 echo                 G E N S H I N   U L T R A   S L I M M E R
 echo                 Genshin Impact PC space tools
-echo            Original project: github.com/dnullptr/GenshinSlimmer
+echo            Original project: https://github.com/dnullptr/GenshinSlimmer
 echo  ============================================================
 echo.
 echo  1. Original GenshinSlimmer by dnullptr
